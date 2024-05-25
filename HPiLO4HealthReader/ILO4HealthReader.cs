@@ -1,7 +1,6 @@
 ﻿using HPiLO4HealthReader.DTO;
 using HPiLO4HealthReader.XmlGenerated;
 using System.Net;
-using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Xml.Serialization;
@@ -15,16 +14,16 @@ namespace HPiLO4HealthReader
     /// https://hewlettpackard.github.io/ilo-rest-api-docs/ilo4/#navigating-the-data-model
     /// https://seveas.github.io/python-hpilo/health.html
     /// </summary>
-    public class ILO4HealthReader
+    public class ILO4DataReader
     {
         private readonly string RequestStringTemplate = "<?xml version=\"1.0\"?>\r\n" +
             "<RIBCL VERSION=\"2.0\"><LOGIN USER_LOGIN=\"{0}\" PASSWORD=\"{1}\">" +
-            "<SERVER_INFO MODE=\"read\"><{2}/><GET_SERVER_POWER_ON_TIME/></SERVER_INFO></LOGIN></RIBCL>";
+            "<SERVER_INFO MODE=\"read\">{2}</SERVER_INFO></LOGIN></RIBCL>";
 
         private HttpClient ApiClient { get; }
         private CookieContainer CookieContainer { get; }
 
-        public ILO4HealthReader(string baseAddress, string userName, string userPass)
+        public ILO4DataReader(string baseAddress, string userName, string userPass)
         {
             CookieContainer = new();
 
@@ -44,11 +43,11 @@ namespace HPiLO4HealthReader
             RequestStringTemplate = string.Format(RequestStringTemplate, userName, userPass, "{0}");
         }
 
-        async public Task<HealthData> GetHealthAndUptime()
+        async protected Task<string> InnerGetData(string request)
         {
             var uri = new Uri(ApiClient.BaseAddress!, $"/ribcl");
 
-            var content = new StringContent(string.Format(RequestStringTemplate, "GET_EMBEDDED_HEALTH"),
+            var content = new StringContent(string.Format(RequestStringTemplate, request),
                 Encoding.UTF8, "text/xml");
 
             var response = await ApiClient.PostAsync(uri, content);
@@ -57,7 +56,27 @@ namespace HPiLO4HealthReader
 
             using var input = await response.Content.ReadAsStreamAsync();
             using var streamReader = new StreamReader(input);
-            string result = streamReader.ReadToEnd();
+
+            return await streamReader.ReadToEndAsync();
+        }
+
+        async public Task<HostData> GetHostData()
+        {
+            var result = await InnerGetData("<GET_HOST_DATA/>");
+
+            // skip service empty statuses...
+            var doc = result
+                .Split("<?xml version=\"1.0\"?>")
+                .Skip(5)
+                .First();
+
+            var serverHostData = DeserializeXml<ServerHostData>(doc);
+            return new(serverHostData);
+        }
+
+        async public Task<HealthData> GetHealthAndUptime()
+        {
+            var result = await InnerGetData("<GET_EMBEDDED_HEALTH/><GET_SERVER_POWER_ON_TIME/>");
 
             // skip service empty statuses...
             var docs = result

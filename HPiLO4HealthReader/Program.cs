@@ -4,13 +4,16 @@
     {
         static void Main()
         {
-            var hp = new ILO4HealthReader(
+            var hp = new ILO4DataReader(
                 Environment.GetEnvironmentVariable("BaseUri")!,
                 Environment.GetEnvironmentVariable("UserName")!,
                 Environment.GetEnvironmentVariable("UserPass")!);
 
-            var retVal = hp.GetHealthAndUptime().Result;
-            Console.WriteLine(retVal.HealthAtAGlance);
+            var retVal1 = hp.GetHostData().Result;
+            Console.WriteLine(retVal1);
+
+            var retVal2 = hp.GetHealthAndUptime().Result;
+            Console.WriteLine(retVal2.HealthAtAGlance);
         }
     }
 }
