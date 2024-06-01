@@ -4,6 +4,9 @@ namespace HPiLO4HealthReader.DTO
 {
     public readonly record struct HostData
     {
+        public readonly string? ServerName { get; }
+        public readonly string? ServerOsName { get; }
+        public readonly string? ServerOsVersion { get; }
         public readonly string? Family { get; }
         public readonly DateOnly? ProductionDate { get; }
         public readonly string? ProductName { get; }
@@ -12,8 +15,12 @@ namespace HPiLO4HealthReader.DTO
         public readonly List<MemorySlot> MemorySlots { get; }
         public readonly List<NetworkCard> NetworkCards { get; }
 
-        public HostData(ServerHostData hostData)
+        public HostData(ServerNameData nameData, ServerHostData hostData)
         {
+            ServerName = string.IsNullOrEmpty(nameData.SERVER_NAME.VALUE) ? null : nameData.SERVER_NAME.VALUE;
+            ServerOsName = string.IsNullOrEmpty(nameData.SERVER_OSNAME.VALUE) ? null : nameData.SERVER_OSNAME.VALUE;
+            ServerOsVersion = string.IsNullOrEmpty(nameData.SERVER_OSVERSION.VALUE) ? null : nameData.SERVER_OSVERSION.VALUE;
+
             Family = hostData.GetData(0, "Family");
             ProductName = hostData.GetData(1, "Product Name");
             SerialNumber = hostData.GetData(1, "Serial Number");
